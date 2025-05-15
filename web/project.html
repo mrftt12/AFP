@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}Project Details - Load Forecasting App{% endblock %}
+
+{% block content %}
+<h2 id="project-name">Loading Project...</h2>
+
+<div id="project-details">
+    <p><strong>Status:</strong> <span id="project-status">Loading...</span></p>
+    <p><strong>Last Updated:</strong> <span id="project-updated">Loading...</span></p>
+    <hr>
+    <h4>Last Run Details:</h4>
+    <p><strong>Data Source:</strong> <span id="data-source">N/A</span></p>
+    <p><strong>Parameters:</strong> Horizon=<span id="param-horizon">N/A</span>, Granularity=<span id="param-granularity">N/A</span>, Unit=<span id="param-unit">N/A</span></p>
+    <p><strong>Best Model:</strong> <span id="best-model">N/A</span></p>
+    <!-- Add metrics display here -->
+</div>
+
+<div style="margin-top: 20px;">
+    <button id="start-run-button" disabled>Start New Forecast Run</button>
+    <button id="view-results-button" style="display: none;">View Results</button> <!-- Show only when Ready -->
+    <button id="delete-project-button" style="background-color: #d9534f; margin-left: 10px;">Delete Project</button>
+</div>
+
+<hr>
+
+<!-- Section for starting a new run (Data Input) -->
+<div id="new-run-section" style="display: none; margin-top: 20px;">
+    <h3>New Forecast Run - Step 1: Data Input</h3>
+    <form id="data-input-form">
+        <input type="hidden" name="project_id" id="project_id_hidden">
+        <div>
+            <label>Select Data Source:</label>
+            <div>
+                <input type="radio" id="source_sample" name="source_type" value="sample" checked>
+                <label for="source_sample">Use Sample Data</label>
+                <select name="sample_filename" id="sample_filename">
+                    <!-- TODO: Populate with sample files from backend? -->
+                    <option value="sample_energy_data.csv">sample_energy_data.csv</option>
+                </select>
+            </div>
+            <div style="margin-top: 10px;">
+                <input type="radio" id="source_upload" name="source_type" value="upload">
+                <label for="source_upload">Upload CSV File</label>
+                <input type="file" name="file" id="file_upload" accept=".csv" disabled>
+            </div>
+        </div>
+        <div style="margin-top: 15px;">
+            <label for="datetime_col">Datetime Column Name (in CSV):</label>
+            <input type="text" id="datetime_col" name="datetime_col" value="timestamp" required>
+        </div>
+        <div>
+            <label for="value_col">Value Column Name (in CSV):</label>
+            <input type="text" id="value_col" name="value_col" value="load_kw" required>
+        </div>
+        <button type="submit">Next: Set Parameters</button>
+    </form>
+</div>
+
+<!-- Section for setting parameters (Step 2) -->
+<div id="parameters-section" style="display: none; margin-top: 20px;">
+    <h3>New Forecast Run - Step 2: Parameters</h3>
+    <form id="parameters-form">
+         <input type="hidden" name="project_id" id="project_id_params_hidden">
+        <div>
+            <label for="horizon">Forecast Horizon:</label>
+            <select id="horizon" name="horizon" required>
+                <option value="2 days">2 Days Ahead</option>
+                <option value="7 days">7 Days Ahead</option>
+                <option value="10 years">10 Years Ahead</option>
+            </select>
+        </div>
+        <div>
+            <label for="granularity">Forecast Granularity:</label>
+            <select id="granularity" name="granularity" required>
+                <option value="Hourly">Hourly</option>
+                <option value="Daily">Daily</option>
+                <option value="Yearly">Yearly</option>
+            </select>
+        </div>
+        <div>
+            <label for="target_unit">Target Variable Unit:</label>
+            <input type="text" id="target_unit" name="target_unit" placeholder="e.g., kWh, Watts">
+        </div>
+        <button type="submit">Start Forecasting</button>
+    </form>
+</div>
+
+<!-- Section for displaying results -->
+<div id="results-section" style="display: none; margin-top: 20px;">
+    <h3>Forecast Results</h3>
+    <div id="results-content">
+        <p>Loading results...</p>
+        <!-- Results (metrics, charts, download link) will be loaded here -->
+    </div>
+</div>
+
+<p style="margin-top: 20px;"><a href="/dashboard.html">Back to Dashboard</a></p>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Include Chart.js -->
+<script>
+    let currentProjectId = null;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        currentProjectId = urlParams.get("id");
+
+        if (!currentProjectId) {
+            showAlert("Project ID missing.", "error");
+            window.location.href = "/dashboard.html";
+            return;
+        }
+
+        // Set hidden project IDs in forms
+        document.getElementById("project_id_hidden").value = currentProjectId;
+        document.getElementById("project_id_params_hidden").value = currentProjectId;
+
+        // Check login status first
+        const authStatus = await checkAuthStatus();
+        if (!authStatus.logged_in) {
+            window.location.href = "/login.html";
+            return;
+        }
+
+        await fetchProjectDetails(currentProjectId);
+        setupEventListeners();
+    });
+
+    async function fetchProjectDetails(projectId) {
+        try {
+            const response = await fetch(`/api/projects/${projectId}`);
+            if (!response.ok) {
+                 if (response.status === 401) {
+                     showAlert("Authentication required.", "error");
+                     window.location.href = "/login.html";
+                 } else if (response.status === 404) {
+                     showAlert("Project not found.", "error");
+                     window.location.href = "/dashboard.html";
+                 } else {
+                     showAlert("Failed to load project details.", "error");
+                 }
+                 return;
+            }
+            const project = await response.json();
+            displayProjectDetails(project);
+
+        } catch (error) {
+            showAlert("Error fetching project details.", "error");
+            console.error("Fetch project error:", error);
+        }
+    }
+
+    function displayProjectDetails(project) {
+        document.getElementById("project-name").textContent = `Project: ${project.name}`;
+        document.getElementById("project-status").textContent = project.status;
+        document.getElementById("project-updated").textContent = new Date(project.last_updated_at).toLocaleString();
+        
+        // Display last run details if available
+        document.getElementById("data-source").textContent = project.raw_data_path ? project.raw_data_path.split("/").pop() : "N/A";
+        document.getElementById("param-horizon").textContent = project.forecast_horizon || "N/A";
+        document.getElementById("param-granularity").textContent = project.forecast_granularity || "N/A";
+        document.getElementById("param-unit").textContent = project.target_unit || "N/A";
+        document.getElementById("best-model").textContent = project.best_model_name || "N/A";
+
+        // Enable/disable buttons based on status
+        const startButton = document.getElementById("start-run-button");
+        const resultsButton = document.getElementById("view-results-button");
+        
+        startButton.disabled = project.status === "Processing"; // Disable if processing
+        resultsButton.style.display = project.status === "Ready" ? "inline-block" : "none";
+    }
+
+    function setupEventListeners() {
+        // Start New Run Button
+        document.getElementById("start-run-button").addEventListener("click", () => {
+            // Hide other sections, show data input
+            hideAllSections();
+            document.getElementById("new-run-section").style.display = "block";
+        });
+
+        // View Results Button
+        document.getElementById("view-results-button").addEventListener("click", () => {
+            hideAllSections();
+            document.getElementById("results-section").style.display = "block";
+            fetchAndDisplayResults(currentProjectId);
+        });
+
+        // Delete Project Button
+        document.getElementById("delete-project-button").addEventListener("click", async () => {
+            if (confirm("Are you sure you want to delete this project?")) {
+                await deleteProject(currentProjectId);
+            }
+        });
+
+        // Data Input Form
+        document.getElementById("data-input-form").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            clearAlerts();
+            const formData = new FormData(event.target);
+            // No need to JSON.stringify for FormData
+
+            try {
+                const response = await fetch(`/api/projects/${currentProjectId}/data`, {
+                    method: "POST",
+                    body: formData, // Send as FormData
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert("Data source set. Proceed to set parameters.", "success");
+                    document.getElementById("new-run-section").style.display = "none";
+                    document.getElementById("parameters-section").style.display = "block";
+                    await fetchProjectDetails(currentProjectId); // Refresh details
+                } else {
+                    showAlert(result.error || "Failed to set data source.", "error");
+                }
+            } catch (error) {
+                showAlert("Error submitting data source.", "error");
+                console.error("Data input error:", error);
+            }
+        });
+
+        // Enable/disable file upload based on radio button selection
+        document.querySelectorAll("input[name=\"source_type\"]").forEach(radio => {
+            radio.addEventListener("change", (event) => {
+                document.getElementById("file_upload").disabled = event.target.value !== "upload";
+                document.getElementById("sample_filename").disabled = event.target.value !== "sample";
+            });
+        });
+        // Initial state
+        document.getElementById("file_upload").disabled = document.getElementById("source_sample").checked;
+        document.getElementById("sample_filename").disabled = document.getElementById("source_upload").checked;
+
+        // Parameters Form
+        document.getElementById("parameters-form").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            clearAlerts();
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch(`/api/projects/${currentProjectId}/run`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                });
+                const result = await response.json();
+                if (response.ok || response.status === 202) { // 202 Accepted
+                    showAlert("Forecast pipeline started. Status will update.", "success");
+                    document.getElementById("parameters-section").style.display = "none";
+                    await fetchProjectDetails(currentProjectId); // Refresh details
+                    // Optionally, start polling for status updates
+                    pollStatus(currentProjectId);
+                } else {
+                    showAlert(result.error || "Failed to start pipeline.", "error");
+                }
+            } catch (error) {
+                showAlert("Error starting forecast pipeline.", "error");
+                console.error("Run pipeline error:", error);
+            }
+        });
+    }
+
+    function hideAllSections() {
+        document.getElementById("new-run-section").style.display = "none";
+        document.getElementById("parameters-section").style.display = "none";
+        document.getElementById("results-section").style.display = "none";
+    }
+
+    async function deleteProject(projectId) {
+        clearAlerts();
+        try {
+            const response = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
+            const result = await response.json();
+            if (response.ok) {
+                showAlert("Project deleted successfully. Redirecting to dashboard...", "success");
+                window.location.href = "/dashboard.html";
+            } else {
+                showAlert(result.error || "Failed to delete project.", "error");
+            }
+        } catch (error) {
+            showAlert("Error deleting project.", "error");
+            console.error("Delete project error:", error);
+        }
+    }
+
+    async function fetchAndDisplayResults(projectId) {
+        const resultsContent = document.getElementById("results-content");
+        resultsContent.innerHTML = "<p>Loading results...</p>";
+        try {
+            const response = await fetch(`/api/projects/${projectId}/results`);
+            if (!response.ok) {
+                const result = await response.json();
+                showAlert(result.error || "Failed to load results.", "error");
+                resultsContent.innerHTML = `<p>Error: ${result.error || "Failed to load results."}</p>`;
+                return;
+            }
+            const results = await response.json();
+            
+            // Display results (simple example)
+            let html = `
+                <p><strong>Status:</strong> ${results.status}</p>
+                <p><strong>Best Model:</strong> ${results.best_model_name || "N/A"}</p>
+                <p><strong>MLflow Run ID:</strong> ${results.mlflow_run_id || "N/A"}</p>
+                <h4>Metrics:</h4>
+                <p>MAPE: ${results.metrics?.MAPE || "N/A"}</p>
+                <p>R2 Score: ${results.metrics?.R2 || "N/A"}</p>
+            `;
+
+            if (results.download_link) {
+                html += `<p><a href="${results.download_link}" class="button" download>Download Forecast CSV</a></p>`;
+            }
+            
+            // Add placeholders for charts
+            html += `<h4>Charts</h4>
+                     <canvas id="actualVsPredChart" width="400" height="200"></canvas>
+                     <canvas id="forecastChart" width="400" height="200"></canvas>`;
+
+            resultsContent.innerHTML = html;
+
+            // TODO: Fetch actual chart data and render using Chart.js
+            // renderChart("actualVsPredChart", results.charts.actual_vs_pred);
+            // renderChart("forecastChart", results.charts.forecast);
+
+        } catch (error) {
+            showAlert("Error fetching results.", "error");
+            resultsContent.innerHTML = "<p>Error loading results.</p>";
+            console.error("Fetch results error:", error);
+        }
+    }
+    
+    // Basic polling function (improve with websockets or better strategy in production)
+    let pollingInterval = null;
+    function pollStatus(projectId) {
+        if (pollingInterval) clearInterval(pollingInterval);
+        
+        pollingInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/projects/${projectId}/status`);
+                if (!response.ok) {
+                    console.warn("Status poll failed, stopping polling.");
+                    clearInterval(pollingInterval);
+                    return;
+                }
+                const data = await response.json();
+                document.getElementById("project-status").textContent = data.status;
+                
+                if (data.status === "Ready" || data.status === "Error") {
+                    console.log(`Polling stopped. Final status: ${data.status}`);
+                    clearInterval(pollingInterval);
+           
+(Content truncated due to size limit. Use line ranges to read in chunks)

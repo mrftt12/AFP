@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount necessary directories for data persistence/access if needed
+      - ./uploads:/app/src/uploads
+      - ./results:/app/src/results
+      - ./sample_data:/app/src/sample_data
+      # Mount mlruns if you want it outside the container
+      # - ./mlruns:/app/mlruns 
+    environment:
+      - FLASK_SECRET_KEY=a_secure_random_secret_key_for_dev_12345 # CHANGE THIS!
+      - DB_HOST=db
+      - DB_NAME=mydb
+      - DB_USERNAME=root
+      - DB_PASSWORD=password # Use a more secure password in real scenarios
+      - PYTHONUNBUFFERED=1 # Ensures logs appear immediately
+    depends_on:
+      db: 
+        condition: service_healthy # Wait for DB to be ready
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password # Use a more secure password
+      MYSQL_DATABASE: mydb
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+        test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+volumes:
+  mysql_data:
+

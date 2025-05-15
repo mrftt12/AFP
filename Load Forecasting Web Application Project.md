@@ -1,0 +1,38 @@
+# Load Forecasting Web Application Project
+
+- [X] 001: Analyze web application requirements
+    - [X] Asked clarifying questions.
+    - [X] Summarized requirements:
+        - **Workflow:** Multi-page guided process.
+        - **UI:** Modern, minimal design.
+        - **Auth:** User registration and login required.
+        - **Projects:** Users create projects to manage forecasting tasks.
+        - **Data Input:** Select from predefined links (e.g., sample datasets) or upload CSV.
+        - **Parameters:** Dropdown menus for horizon/granularity.
+        - **Results:** Display charts, tables, metrics (MAPE, R2), downloadable forecasts.
+        - **Framework:** Flask backend.
+        - **Deployment:** Docker-based for flexibility, permanent deployment desired.
+- [X] 002: Design web application architecture and user interface
+    - [X] Outlined overall architecture (frontend, backend API, ML pipeline interaction).
+    - [X] Designed UI mockups/wireframes (conceptual description).
+    - [X] Selected appropriate web framework (Flask).
+- [X] 003: Implement backend API and MLOps integration
+    - [X] Adapted existing agents/logic into backend API endpoints (using Flask).
+    - [X] API handles data upload, triggers ML pipeline (via threading), retrieves status/results.
+    - [X] Integrated with MLflow for model loading/tracking (within ModelingAgent).
+    - [X] Implemented User Auth & Project CRUD.
+- [X] 004: Develop frontend interface
+    - [X] Implemented UI based on design (Flask templates).
+    - [X] Implemented components for auth, project list/create/details, data input, parameter selection, results display (placeholders for charts).
+    - [X] Connected frontend to backend API via JavaScript fetch.
+- [ ] 005: Deploy and test web application
+    - [ ] Package application (e.g., using Docker).
+    - [ ] Test application locally.
+    - [ ] Deploy application using permanent deployment tool.
+- [ ] 006: Validate permanent deployment and public access
+    - [ ] Verify public URL accessibility.
+    - [ ] Perform basic functionality testing on the deployed application.
+- [ ] 007: Report and deliver website details to user
+    - [ ] Prepare final summary including the public URL.
+    - [ ] Provide usage instructions for the web application.
+    - [ ] Deliver updated code and documentation.

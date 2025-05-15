@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Load Forecasting App</title>
+    <!-- Basic redirect logic or placeholder content -->
+    <script>
+        // Simple redirect based on a potential auth check, 
+        // but the backend / route already handles this.
+        // This page might not even be strictly necessary if backend handles root redirect.
+        // Or it could be a public landing page.
+        // For now, assume backend handles redirect correctly.
+        // If user lands here logged in, they should be redirected to dashboard by backend.
+        // If user lands here logged out, they should be redirected to login by backend.
+        // window.location.href = "/dashboard.html"; // Or check auth status
+    </script>
+    <link rel="stylesheet" href="{{ url_for("static", filename="styles.css") }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Load Forecasting App</h1>
+        <p>Loading...</p>
+        <!-- Content for logged-out users if this becomes a public landing page -->
+        <!-- Or just let the backend redirect handle it -->
+    </div>
+     <script src="{{ url_for("static", filename="script.js") }}"></script>
+     <script>
+        // Redirect logic can also live here
+        document.addEventListener("DOMContentLoaded", async () => {
+            const auth = await checkAuthStatus();
+            if(auth.logged_in) {
+                // Check if we are already on dashboard to prevent loop
+                if(!window.location.pathname.includes("dashboard.html")) {
+                     window.location.href = "/dashboard.html";
+                }
+            } else {
+                 if(!window.location.pathname.includes("login.html")) {
+                     window.location.href = "/login.html";
+                 }
+            }
+        });
+     </script>
+</body>
+</html>
