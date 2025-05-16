@@ -1,0 +1,41 @@
+# Dockerfile.dev for Load Forecasting Webapp (development version)
+
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    default-libmysqlclient-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file
+COPY requirements.dev.txt .
+
+# Install minimal Python dependencies for the web app
+RUN pip install --no-cache-dir -r requirements.dev.txt
+# Explicitly install flask-cors to make sure it's available
+RUN pip install --no-cache-dir flask-cors==4.0.0
+
+# Copy the entire web application source code
+COPY ./src /app/src
+COPY ./wsgi.py /app/wsgi.py
+
+# Create empty __init__.py files if they don't exist
+RUN mkdir -p /app/src/models /app/src/routes /app/src/utils \
+    && touch /app/src/__init__.py /app/src/models/__init__.py /app/src/routes/__init__.py /app/src/utils/__init__.py
+
+# Make port 5000 available to the world outside this container
+EXPOSE 5000
+
+# Define environment variables
+ENV FLASK_APP=src.main:app
+ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_RUN_PORT=5000
+ENV FLASK_DEBUG=1
+
+# Run the application using Flask's built-in server
+CMD ["flask", "run"]

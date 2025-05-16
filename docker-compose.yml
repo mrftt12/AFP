@@ -1,18 +1,22 @@
 version: "3.8"
 
 services:
-  web:
-    build: .
+  # Backend Flask API service
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
       - "5000:5000"
     volumes:
-      # Mount necessary directories for data persistence/access if needed
+      # For development, mount the source code directory
+      - ./src:/app/src
       - ./uploads:/app/src/uploads
       - ./results:/app/src/results
       - ./sample_data:/app/src/sample_data
-      # Mount mlruns if you want it outside the container
-      # - ./mlruns:/app/mlruns 
     environment:
+      - FLASK_APP=src.main:app
+      - FLASK_DEBUG=1  # Enable Flask debug mode for development
       - FLASK_SECRET_KEY=a_secure_random_secret_key_for_dev_12345 # CHANGE THIS!
       - DB_HOST=db
       - DB_NAME=mydb
@@ -22,12 +26,32 @@ services:
     depends_on:
       db: 
         condition: service_healthy # Wait for DB to be ready
+    restart: unless-stopped
+  
+  # Frontend React development server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000" # React dev server port
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true # Enables hot-reload in Windows/WSL
+    depends_on:
+      - api
 
+  # Database service
   db:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: password # Use a more secure password
       MYSQL_DATABASE: mydb
+    ports:
+      - "3306:3306" # Expose MySQL port for local development
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -35,6 +59,7 @@ services:
         interval: 10s
         timeout: 5s
         retries: 5
+    restart: unless-stopped
 
 volumes:
   mysql_data:

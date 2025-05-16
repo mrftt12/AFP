@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Load Forecasting App{% endblock %}
+
+{% block content %}
+<h2>Dashboard</h2>
+
+<div style="margin-bottom: 20px;">
+    <a href="/create_project.html" class="button">Create New Project</a>
+</div>
+
+<h3>Your Projects</h3>
+<ul id="project-list">
+    <!-- Projects will be loaded here by JavaScript -->
+    <li>Loading projects...</li>
+</ul>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        // Check login status first
+        const authStatus = await checkAuthStatus(); // Assumes checkAuthStatus is defined in script.js
+        if (!authStatus.logged_in) {
+            window.location.href = "/login.html";
+            return;
+        }
+
+        fetchProjects();
+    });
+
+    async function fetchProjects() {
+        const projectList = document.getElementById("project-list");
+        projectList.innerHTML = "<li>Loading projects...</li>"; // Show loading indicator
+
+        try {
+            const response = await fetch("/api/projects/"); // GET request by default
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                     showAlert("Authentication required. Please log in.", "error");
+                     window.location.href = "/login.html";
+                     return;
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const projects = await response.json();
+            projectList.innerHTML = ""; // Clear loading indicator
+
+            if (projects.length === 0) {
+                projectList.innerHTML = "<li>No projects found. Create one!</li>";
+            } else {
+                projects.forEach(project => {
+                    const li = document.createElement("li");
+                    const projectLink = document.createElement("a");
+                    projectLink.href = `/project.html?id=${project.id}`; // Link to project detail page
+                    projectLink.textContent = project.name;
+                    
+                    const statusSpan = document.createElement("span");
+                    statusSpan.textContent = `Status: ${project.status} | Updated: ${new Date(project.last_updated_at).toLocaleString()}`;
+                    
+                    li.appendChild(projectLink);
+                    li.appendChild(statusSpan);
+                    projectList.appendChild(li);
+                });
+            }
+        } catch (error) {
+            showAlert("Failed to load projects.", "error");
+            projectList.innerHTML = "<li>Error loading projects.</li>";
+            console.error("Fetch projects error:", error);
+        }
+    }
+</script>
+{% endblock %}

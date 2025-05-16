@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Load Forecasting App</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 960px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        header { background-color: #333; color: #fff; padding: 10px 0; margin-bottom: 20px; }
+        header .container { display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; }
+        nav a, nav button { color: #fff; text-decoration: none; margin-left: 15px; background: none; border: none; cursor: pointer; font-size: 1em; }
+        nav a:hover, nav button:hover { text-decoration: underline; }
+        h1, h2 { color: #333; }
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        form label { display: block; margin-bottom: 5px; font-weight: bold; }
+        form input[type="text"], form input[type="email"], form input[type="password"], form select, form input[type="file"] {
+            width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
+        }
+        form button { background-color: #5cb85c; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; }
+        form button:hover { background-color: #4cae4c; }
+        .register-container {
+            max-width: 400px;
+            margin: 40px auto;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .register-container h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .register-container form {
+            margin-bottom: 20px;
+        }
+        .register-container p {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Load Forecasting</h1>
+            <nav id="nav-links">
+                <!-- Links will be dynamically added by JS based on auth status -->
+            </nav>
+        </div>
+    </header>
+    <main class="container">
+        <div id="alert-container"></div>
+        <div class="register-container">
+            <h2>Register</h2>
+            <form id="register-form">
+                <div>
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div>
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div>
+                    <label for="confirm-password">Confirm Password:</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required>
+                </div>
+                <button type="submit">Register</button>
+            </form>
+            <p>Already have an account? <a href="/login.html">Login here</a>.</p>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Function to show alerts
+            function showAlert(message, type) {
+                const alertContainer = document.getElementById('alert-container');
+                alertContainer.innerHTML = '';
+                
+                const alert = document.createElement('div');
+                alert.className = `alert alert-${type}`;
+                alert.textContent = message;
+                
+                alertContainer.appendChild(alert);
+                
+                // Auto-dismiss after 5 seconds
+                setTimeout(() => {
+                    alert.remove();
+                }, 5000);
+            }
+            
+            // Function to clear alerts
+            function clearAlerts() {
+                const alertContainer = document.getElementById('alert-container');
+                alertContainer.innerHTML = '';
+            }
+            
+            // Handle registration form submission
+            document.getElementById('register-form').addEventListener('submit', async function(event) {
+                event.preventDefault();
+                const username = document.getElementById('username').value;
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+                
+                clearAlerts();
+                
+                // Validate passwords match
+                if (password !== confirmPassword) {
+                    showAlert('Passwords do not match.', 'error');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/auth/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username, email, password }),
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        showAlert('Registration successful! Redirecting...', 'success');
+                        // Redirect to dashboard after successful registration
+                        setTimeout(() => {
+                            window.location.href = '/dashboard.html';
+                        }, 1500);
+                    } else {
+                        showAlert(result.error || 'Registration failed.', 'error');
+                    }
+                } catch (error) {
+                    showAlert('An error occurred during registration.', 'error');
+                    console.error('Registration error:', error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

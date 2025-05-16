@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Create Project - Load Forecasting App{% endblock %}
+
+{% block content %}
+<h2>Create New Project</h2>
+<form id="create-project-form">
+    <div>
+        <label for="name">Project Name:</label>
+        <input type="text" id="name" name="name" required>
+    </div>
+    <button type="submit">Create Project</button>
+</form>
+<p><a href="/dashboard.html">Back to Dashboard</a></p>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        // Check login status first
+        const authStatus = await checkAuthStatus();
+        if (!authStatus.logged_in) {
+            window.location.href = "/login.html";
+            return;
+        }
+    });
+
+    document.getElementById("create-project-form").addEventListener("submit", async function(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const data = Object.fromEntries(formData.entries());
+
+        clearAlerts();
+
+        try {
+            const response = await fetch("/api/projects/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                showAlert("Project created successfully! Redirecting...", "success");
+                // Redirect to the new project"s page
+                window.location.href = `/project.html?id=${result.project.id}`;
+            } else {
+                showAlert(result.error || "Failed to create project.", "error");
+            }
+        } catch (error) {
+            showAlert("An error occurred while creating the project.", "error");
+            console.error("Create project error:", error);
+        }
+    });
+</script>
+{% endblock %}

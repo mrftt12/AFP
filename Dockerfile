@@ -7,7 +7,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies (like build-essential for some ML libraries if needed)
-# RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file first to leverage Docker cache
 COPY requirements.txt .
@@ -15,16 +15,8 @@ COPY requirements.txt .
 # Install Python dependencies from the main webapp
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install dependencies from the ML agents (Need to merge requirements or install separately)
-# Assuming ML agent requirements are in a separate file for now
-COPY /home/ubuntu/load_forecasting_agents/requirements.txt /app/ml_requirements.txt
-RUN pip install --no-cache-dir -r /app/ml_requirements.txt
-
 # Copy the entire web application source code
 COPY ./src /app/src
-
-# Copy the ML agent code into the container (adjust path if needed)
-COPY /home/ubuntu/load_forecasting_agents /app/load_forecasting_agents
 
 # Make port 5000 available to the world outside this container
 EXPOSE 5000
@@ -33,8 +25,6 @@ EXPOSE 5000
 ENV FLASK_APP=src.main:app
 ENV FLASK_RUN_HOST=0.0.0.0
 ENV FLASK_RUN_PORT=5000
-# Set Python path to include the copied agents directory
-ENV PYTHONPATH="/app:/app/load_forecasting_agents"
 # Database connection details (can be set in docker-compose)
 ENV DB_HOST=db
 ENV DB_NAME=mydb

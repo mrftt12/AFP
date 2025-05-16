@@ -12,3 +12,9 @@ seaborn
 plotly
 PyYAML
 python-dotenv
+flask
+flask-sqlalchemy
+flask-cors
+pymysql
+werkzeug
+gunicorn

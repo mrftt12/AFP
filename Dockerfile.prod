@@ -1,0 +1,45 @@
+# Multi-stage build for Load Forecasting Web Application
+
+# Stage 1: Build React frontend
+FROM node:16-alpine as frontend-build
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Python application with frontend build
+FROM python:3.11-slim
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    default-libmysqlclient-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the requirements file and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the backend code
+COPY ./src /app/src
+
+# Create empty __init__.py files if they don't exist
+RUN mkdir -p /app/src/models /app/src/routes /app/src/utils \
+    && touch /app/src/models/__init__.py /app/src/routes/__init__.py /app/src/utils/__init__.py
+
+# Copy the built frontend from the previous stage
+COPY --from=frontend-build /app/frontend/build /app/frontend/build
+
+# Make port 5000 available to the world outside this container
+EXPOSE 5000
+
+# Define environment variables
+ENV FLASK_APP=src.main:app
+ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_RUN_PORT=5000
+ENV FLASK_ENV=production
+
+# Run the application with gunicorn for production
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "wsgi:app"]
